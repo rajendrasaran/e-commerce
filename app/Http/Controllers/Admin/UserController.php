@@ -21,25 +21,28 @@ class UserController extends Controller
             $data = User::latest()->get();
             return DataTables::of($data)
                 ->addIndexColumn()
-                
-                ->addColumn('action', function($row){
-                    $action = '<a href="'.route("user.edit", $row->id).'">Edit</a>
-                    <form action="'.route("user.destroy", $row->id).'" method="post">
-                        <input type="hidden" name="_token" value="'.csrf_token().'">
+
+                ->addColumn('action', function ($row) {
+                    $action = '<a href="' . route("user.edit", $row->id) . '">Edit</a>
+                    <form action="' . route("user.destroy", $row->id) . '" method="post">
+                        <input type="hidden" name="_token" value="' . csrf_token() . '">
                         <input type="hidden" name="_method" value="DELETE">
                         <input type="submit" name="delete" value="delete">
-                    </form>';                    
+                    </form>';
                     return $action;
                 })
-                ->addColumn('roles', function($row){
+                ->addColumn('roles', function ($row) {
                     return $row->roles->pluck('name')->implode(',<br> ');
                 })
                 ->addColumn('image', function ($row) {
-                    return '<img src="'.$row->getFirstMediaUrl('image').'"/>';
+                    return '<img src="' . $row->getFirstMediaUrl('image') . '"/>';
                 })
-                ->rawColumns(['update','action', 'roles','image'])
+                ->rawColumns(['update', 'action', 'roles', 'image'])
                 ->make(true);
-        }                              
+        }
+        if ($request->expectsJson()) {
+            return response()->json($users);
+        }
         return view('user.index');
     }
 
@@ -58,22 +61,28 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            "name"=> "required",
-            "email"=> "required|email",
-            "password"=>"required",
-            "confirm_password"=> "same:password"
-         ]);      
+            "name" => "required",
+            "email" => "required|email",
+            "password" => "required",
+            "confirm_password" => "same:password"
+        ]);
 
         $data =  $request->all();
         $users = User::create($data);
 
-        if($request->hasFile('image') && $request->file('image')->isValid()){
+        if ($request->hasFile('image') && $request->file('image')->isValid()) {
             $users->addMediaFromRequest('image')->toMediaCollection('image');
         }
 
-        if($request->input('roles')) {
+        if ($request->input('roles')) {
             $users->syncRoles($request->input('roles'));
-        }   
+        }
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'User created successfully',
+                'user' => $users
+            ], 201);
+        }
         return redirect()->route('user.index');
     }
 
@@ -91,15 +100,15 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles = Role::all();
-        return view('user.edit',compact('user','roles'));
+        return view('user.edit', compact('user', 'roles'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request,$id)
+    public function update(Request $request, $id)
     {
-        $user = $request->only('name','email');
+        $user = $request->only('name', 'email');
         User::where('id', $id)->update($user);
         $data = User::find($id);
         $data->syncRoles($request->input('roles'));
@@ -109,9 +118,18 @@ class UserController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(User $user)
+    public function destroy(Request $request, $id)
     {
+        $user = User::find($id);
+        if ($request->expectsJson()) {
+            if (!$user) {
+                return response()->json(['message' => 'User not found'], 404);
+            }
+        }
         $user->delete();
-        return redirect()->route('user.index');
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'User deleted successfully']);
+        }
+        return redirect()->back()->with('success', 'User deleted successfully');
     }
 }

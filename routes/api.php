@@ -19,8 +19,13 @@ use Illuminate\Support\Facades\Route;
 Route::group(["prefix" => "V1",],function(){
     Route::resource('user',UserController::class);
     Route::get('admin', [LoginController::class, 'login'])->name('login');
-});
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+    Route::post('admin/login-user', [LoginController::class, 'loginuser'])->name('login-user');
     
+    Route::prefix('admin')->group(function () {
+
+    Route::post('user-store', [UserController::class, 'store'])->name('store');
+        Route::resource('user', UserController::class);
+    });
+
 });
+
