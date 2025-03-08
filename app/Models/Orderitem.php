@@ -16,8 +16,8 @@ class Orderitem extends Model
         "sku",
         "qty",
         "price",
-        "row_total"
-
+        "row_total",
+        "custom_option"
     ];
 
 
